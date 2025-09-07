@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Button } from "../components/ui/button"
+import { Button } from "./ui/button"
 import { ShoppingCart, LogOut, LayoutDashboard, Menu, X } from "lucide-react"
 import { AuthModal } from "./auth-modal" 
 import { useCartStore } from "../store/useCartStore"

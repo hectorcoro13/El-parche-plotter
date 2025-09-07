@@ -1,6 +1,6 @@
 
-import { Button } from "../components/ui/button"
-import { TribalFlames } from "../components/tribal-flames"
+import { Button } from "./ui/button"
+import { TribalFlames } from "./tribal-flames"
 import Link from "next/link" 
 
 export function HeroSection() {

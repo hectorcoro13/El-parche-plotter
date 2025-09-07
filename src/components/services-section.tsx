@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardContent } from "../components/ui/card"
+import { Card, CardContent } from "./ui/card"
 import { Scissors, Sticker, Palette, Printer, Shirt, Gift } from "lucide-react"
 import { useScrollAnimation } from "../hooks/use-scroll-animation"
 

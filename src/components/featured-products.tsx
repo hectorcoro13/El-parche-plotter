@@ -1,7 +1,7 @@
 "use client"
 
 import { useScrollAnimation } from "../hooks/use-scroll-animation"
-import { Button } from "../components/ui/button"
+import { Button } from "./ui/button"
 import { ShoppingCart } from "lucide-react"
 import { useCartStore } from "../store/useCartStore" // 1. Importa la store del carrito
 import { Product } from "../types/products" // Importa el tipo Product si es necesario

@@ -4,7 +4,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "../components/ui/dialog"
+} from "./ui/dialog"
 import { SignUpForm } from "./SignUpForm"
 import { SignInForm } from "./sign-in-form"
 import { useState } from "react"
