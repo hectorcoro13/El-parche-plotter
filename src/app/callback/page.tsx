@@ -1,22 +1,22 @@
-// src front/app/callback/page.tsx
 "use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../store/useAuthStore";
+import { useCartStore } from "../../store/useCartStore"; // <-- Importa el store del carrito
 import Swal from "sweetalert2";
 
 export default function AuthCallbackPage() {
   const { login } = useAuthStore();
+  const { syncCart } = useCartStore(); // <-- Obtén la función de sincronización
   const router = useRouter();
 
   useEffect(() => {
     const fetchProfileAndSetToken = async () => {
       try {
-        // Hacemos una llamada al backend para que nos dé el token y los datos del usuario
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/auth0/profile`,
-          { credentials: "include" } // ¡Muy importante para que envíe las cookies de sesión!
+          { credentials: "include" }
         );
 
         if (!response.ok) {
@@ -25,8 +25,11 @@ export default function AuthCallbackPage() {
 
         const data = await response.json();
 
-        // Usamos la función 'login' de nuestro store para guardar el token y los datos del usuario
+        // Guardamos el token y los datos del usuario
         await login(data.token);
+        
+        // --- AÑADIMOS LA SINCRONIZACIÓN DEL CARRITO ---
+        await syncCart();
 
         Swal.fire({
           toast: true,
@@ -38,7 +41,8 @@ export default function AuthCallbackPage() {
           background: '#111827', color: '#FFFFFF'
         });
 
-        // Redirigimos al perfil o a donde necesites
+        // La redirección al perfil sucederá automáticamente por el "guardián" si es necesario
+        // Si no, podemos dejar que vaya al home o al perfil directamente.
         router.push("/perfil");
 
       } catch (error) {
@@ -49,12 +53,12 @@ export default function AuthCallbackPage() {
           text: "Hubo un problema al iniciar tu sesión. Por favor, inténtalo de nuevo.",
           background: '#111827', color: '#FFFFFF'
         });
-        router.push("/"); // Redirigir a la página de inicio en caso de error
+        router.push("/");
       }
     };
 
     fetchProfileAndSetToken();
-  }, [login, router]);
+  }, [login, router, syncCart]); // <-- Añade syncCart a las dependencias
 
   return (
     <div className="flex flex-col h-screen w-full items-center justify-center bg-black text-white">

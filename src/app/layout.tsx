@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import "./globals.css"
 import { AuthInitializer } from "../components/auth-initializer"
+import { ProfileCompletionGuard } from "../components/ProfileCompletionGuard" // <-- Importa el guardián
 
 const cinzel = Cinzel({
   subsets: ["latin"],
@@ -33,8 +34,13 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`font-sans ${inter.variable} ${cinzel.variable} antialiased`}>
-        <AuthInitializer  /> {/* <-- Añade el inicializador aquí */}
-        <Suspense fallback={null}>{children}</Suspense>
+        <AuthInitializer />
+        <Suspense fallback={null}>
+          {/* Envuelve a {children} con el guardián */}
+          <ProfileCompletionGuard>
+            {children}
+          </ProfileCompletionGuard>
+        </Suspense>
         <Analytics />
       </body>
     </html>
