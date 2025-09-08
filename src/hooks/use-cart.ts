@@ -17,7 +17,6 @@ interface CartItem extends Product {
   quantity: number
 }
 
-// Definición del estado y acciones del store del carrito
 interface CartStore {
   items: CartItem[]
   addToCart: (item: Product) => void
@@ -26,17 +25,16 @@ interface CartStore {
   clearCart: () => void
 }
 
-// Creación del hook 'useCart' con Zustand
 export const useCart = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],
-      // Acción para añadir un producto al carrito
       addToCart: (product) => {
         const currentItems = get().items
         const existingItem = currentItems.find((item) => item.id === product.id)
 
-        // Si el producto ya está en el carrito
+        let itemAdded = false;
+
         if (existingItem) {
           if (existingItem.quantity < product.stock) {
             set({
@@ -44,6 +42,7 @@ export const useCart = create<CartStore>()(
                 item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
               ),
             })
+            itemAdded = true;
           } else {
             Swal.fire({
               icon: "warning",
@@ -54,9 +53,9 @@ export const useCart = create<CartStore>()(
             })
           }
         } else {
-          // Si el producto no está en el carrito
           if (product.stock > 0) {
             set({ items: [...currentItems, { ...product, quantity: 1 }] })
+            itemAdded = true;
           } else {
             Swal.fire({
               icon: "warning",
@@ -67,12 +66,21 @@ export const useCart = create<CartStore>()(
             })
           }
         }
+
+        if (itemAdded) {
+          Swal.fire({
+            icon: 'success',
+            title: '¡Añadido!',
+            text: `${product.name} se ha añadido al carrito.`,
+            timer: 1500,
+            showConfirmButton: false,
+            position: 'top-end',
+          });
+        }
       },
-      // Acción para eliminar un producto del carrito
       removeFromCart: (productId) => {
         set({ items: get().items.filter((item) => item.id !== productId) })
       },
-      // Acción para decrementar la cantidad de un producto
       decreaseQuantity: (productId) => {
         const currentItems = get().items
         const existingItem = currentItems.find((item) => item.id === productId)
@@ -84,16 +92,14 @@ export const useCart = create<CartStore>()(
             ),
           })
         } else {
-          // Si la cantidad es 1, se elimina del carrito
           get().removeFromCart(productId)
         }
       },
-      // Acción para vaciar el carrito
       clearCart: () => set({ items: [] }),
     }),
     {
-      name: "cart-storage", // Nombre para el almacenamiento local
-      storage: createJSONStorage(() => localStorage), // Usar localStorage para persistencia
+      name: "cart-storage",
+      storage: createJSONStorage(() => localStorage),
     },
   ),
 )
