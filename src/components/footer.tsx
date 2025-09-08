@@ -27,17 +27,17 @@ export function Footer() {
             <h4 className="text-lg font-semibold text-white mb-4">Contacto Directo</h4>
             <div className="space-y-3">
               <a
-                href="https://wa.me/573102964497"
+                href="https://wa.me/573188944869"
                 className="flex items-center text-gray-400 hover:text-red-500 transition-colors"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 <MessageCircle className="w-5 h-5 mr-3" />
-                WhatsApp: +57 3102964497
+                WhatsApp: +57 3188944869
               </a>
               <div className="flex items-center text-gray-400">
                 <Phone className="w-5 h-5 mr-3" />
-                Teléfono: +57 3102964497
+                Teléfono: +57 3188944869
               </div>
             </div>
           </div>
@@ -59,7 +59,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-red-500/20 mt-8 pt-8 text-center">
-          <p className="text-gray-400">© 2024 El Parche Plotter. Todos los derechos reservados.</p>
+          <p className="text-gray-400">© 2025 El Parche Plotter. Todos los derechos reservados.</p>
         </div>
       </div>
     </footer>
