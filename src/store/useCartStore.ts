@@ -25,6 +25,7 @@ interface CartState {
   decreaseQuantity: (productId: string) => void;
   clearCart: () => void;
   syncCart: () => Promise<void>;
+  fetchAndSetCart: () => Promise<void>; // <-- NUEVA FUNCIÓN
 }
 
 export const useCartStore = create<CartState>()(
@@ -32,7 +33,6 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       
-      // --- FUNCIÓN ADD-TO-CART CON NOTIFICACIÓN CENTRALIZADA ---
       addToCart: (product) => {
         const currentItems = get().items;
         const existingItem = currentItems.find((item) => item.id === product.id);
@@ -66,14 +66,12 @@ export const useCartStore = create<CartState>()(
         }
 
         if (itemAdded) {
-          // Notificación Toast que se mostrará siempre al añadir un producto.
           const Toast = Swal.mixin({
             toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
             timerProgressBar: true, background: '#111827', color: '#FFFFFF',
           });
           Toast.fire({ icon: 'success', title: '¡Producto añadido al carrito!' });
         }
-        // Sincroniza con el backend después de modificar el carrito
         get().syncCart();
       },
       
@@ -100,21 +98,42 @@ export const useCartStore = create<CartState>()(
 
       clearCart: () => {
         set({ items: [] });
-        // No es necesario llamar a syncCart aquí si el objetivo es solo limpiar el local storage.
-        // Si también debe limpiar el carrito en el backend, se haría aquí.
+      },
+      
+      // --- NUEVA FUNCIÓN ---
+      // Trae el carrito del servidor y reemplaza el local. La fuente de verdad es el backend.
+      fetchAndSetCart: async () => {
+        const { token } = useAuthStore.getState();
+        if (!token) return;
+
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          if (!response.ok) throw new Error('No se pudo obtener el carrito del servidor.');
+          
+          const serverCart = await response.json();
+          set({ items: serverCart.items || [] }); 
+        } catch (error) {
+          console.error("Error al obtener el carrito:", error);
+        }
       },
 
       syncCart: async () => {
         const { token } = useAuthStore.getState();
-        if (!token) return; // No sincronizar si no hay usuario logueado
+        if (!token) return;
 
         const items = get().items.map(item => ({
           productId: item.id,
-          quantity: item.quantity
+          quantity: item.quantity,
+          name: item.name,
+          price: Number(item.price),
+          imgUrl: item.imgUrl || 'No image'
         }));
         
         try {
-          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart/sync`, {
+         
+          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart/sync`, { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ items }),

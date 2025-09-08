@@ -3,12 +3,14 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../store/useAuthStore";
-import { useCartStore } from "../../store/useCartStore"; // <-- Importa el store del carrito
+import { useCartStore } from "../../store/useCartStore";
 import Swal from "sweetalert2";
 
 export default function AuthCallbackPage() {
   const { login } = useAuthStore();
-  const { syncCart } = useCartStore(); // <-- Obtén la función de sincronización
+  // --- CORRECCIÓN AQUÍ ---
+  // Obtenemos la nueva función que trae los datos del servidor.
+  const { fetchAndSetCart } = useCartStore();
   const router = useRouter();
 
   useEffect(() => {
@@ -28,8 +30,10 @@ export default function AuthCallbackPage() {
         // Guardamos el token y los datos del usuario
         await login(data.token);
         
-        // --- AÑADIMOS LA SINCRONIZACIÓN DEL CARRITO ---
-        await syncCart();
+        // --- CORRECCIÓN CLAVE AQUÍ ---
+        // En lugar de enviar el carrito local al servidor (syncCart),
+        // traemos el carrito del servidor para que sea la fuente de verdad.
+        await fetchAndSetCart();
 
         Swal.fire({
           toast: true,
@@ -41,8 +45,6 @@ export default function AuthCallbackPage() {
           background: '#111827', color: '#FFFFFF'
         });
 
-        // La redirección al perfil sucederá automáticamente por el "guardián" si es necesario
-        // Si no, podemos dejar que vaya al home o al perfil directamente.
         router.push("/perfil");
 
       } catch (error) {
@@ -58,7 +60,9 @@ export default function AuthCallbackPage() {
     };
 
     fetchProfileAndSetToken();
-  }, [login, router, syncCart]); // <-- Añade syncCart a las dependencias
+    // --- CORRECCIÓN AQUÍ ---
+    // Añadimos la nueva función a las dependencias del useEffect.
+  }, [login, router, fetchAndSetCart]);
 
   return (
     <div className="flex flex-col h-screen w-full items-center justify-center bg-black text-white">

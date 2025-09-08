@@ -8,7 +8,7 @@ import Swal from 'sweetalert2';
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-// Definimos los tipos para los props
+// Tipos para los props
 interface User {
   id: string; name: string; email: string; address?: string | null; city?: string | null; phone?: string | number | null;
 }
@@ -61,38 +61,63 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
     if (items.length > 0) createPreference();
   }, [items]);
 
+  // --- LÓGICA DE PAGO COMPLETAMENTE REESTRUCTURADA ---
   const handleOnSubmit = async (formData: any) => {
-    const orderData = {
-      userId: user.id,
-      products: items.map(item => ({ id: item.id })),
-    };
-    
     try {
-      // 1. Crear la orden en nuestro backend primero
+      // 1. Procesar el pago REAL con MercadoPago a través de nuestro backend.
+      const paymentResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mercadopago/process-payment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`, // Enviamos el token por si se necesita
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const paymentResult = await paymentResponse.json();
+
+      // 2. Verificar si el pago fue aprobado. Si no, detener el proceso y mostrar error.
+      if (paymentResult.status !== 'approved') {
+        throw new Error(paymentResult.status_detail || 'El pago fue rechazado. Por favor, revisa tus datos.');
+      }
+
+      // 3. Si el pago fue aprobado, AHORA SÍ creamos la orden en nuestra base de datos.
+      const orderData = {
+        userId: user.id,
+        products: items.map(item => ({ id: item.id, quantity: item.quantity })),
+      };
+
       const orderResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(orderData),
       });
 
-      if (!orderResponse.ok) throw new Error('No se pudo crear la orden.');
+      if (!orderResponse.ok) {
+        throw new Error('El pago fue exitoso pero hubo un problema al registrar tu orden. Por favor, contacta a soporte.');
+      }
 
-      // 2. Si la orden se crea, mostrar confirmación y limpiar el carrito
-       await Swal.fire({
-          title: '¡Pago Exitoso!',
-          text: 'Tu compra ha sido realizada con éxito. Revisa tu correo para ver los detalles.',
-          icon: 'success',
-          timer: 3000,
-          showConfirmButton: false,
-          background: '#111827', color: '#FFFFFF'
-        });
-        
-        clearCart();
-        router.push('/perfil');
+      // 4. Si todo salió bien, mostramos la confirmación final.
+      await Swal.fire({
+        title: '¡Pago Exitoso!',
+        text: 'Tu compra ha sido realizada. Revisa tu correo para ver los detalles.',
+        icon: 'success',
+        timer: 3000,
+        showConfirmButton: false,
+        background: '#111827', color: '#FFFFFF'
+      });
+      
+      clearCart();
+      router.push('/perfil');
 
     } catch (err: any) {
       console.error("Error en el proceso de pago:", err);
-      Swal.fire('Error', 'Hubo un problema al procesar tu pago. Inténtalo de nuevo.', 'error');
+      Swal.fire({
+        title: 'Error en el Pago',
+        text: err.message,
+        icon: 'error',
+        background: '#111827', color: '#FFFFFF'
+      });
     }
   };
 
@@ -125,8 +150,8 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
                   creditCard: 'all',
                   debitCard: 'all',
                   mercadoPago: 'all',
-                  bankTransfer: 'all', // Correcto. Esto habilita PSE, y DENTRO de PSE se encuentra Nequi.
-                  ticket: 'all',       // Correcto. Esto habilita pagos en efectivo como Efecty.
+                  bankTransfer: 'all',
+                  ticket: 'all',
                 },
                 visual: {
                   style: { 

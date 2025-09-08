@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react"
 import { ShoppingCart, Check } from "lucide-react"
 import { useScrollAnimation } from "../hooks/use-scroll-animation"
-import { useCart } from "../hooks/use-cart" // Importamos el hook del carrito
+import { useCartStore } from "../hooks/use-cart"
 
-// Definimos el tipo de un producto para mayor seguridad
 interface Product {
   id: string;
   name: string;
@@ -21,7 +20,7 @@ export function FeaturedProducts() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [addedProductId, setAddedProductId] = useState<string | null>(null)
-  const { addToCart } = useCart() // Obtenemos la función para añadir al carrito
+  const { addToCart } = useCartStore()
 
   useEffect(() => {
     const fetchFeaturedProducts = async () => {
