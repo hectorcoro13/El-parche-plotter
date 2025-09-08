@@ -1,6 +1,6 @@
 "use client"
 
-import { Phone, MessageCircle, Instagram, Facebook } from "lucide-react"
+import { Phone, MessageCircle, Instagram } from "lucide-react"
 import { useScrollAnimation } from "../hooks/use-scroll-animation"
 
 export function Footer() {
@@ -33,11 +33,11 @@ export function Footer() {
                 rel="noopener noreferrer"
               >
                 <MessageCircle className="w-5 h-5 mr-3" />
-                WhatsApp: +57 300 123 4567
+                WhatsApp: +57 3102964497
               </a>
               <div className="flex items-center text-gray-400">
                 <Phone className="w-5 h-5 mr-3" />
-                Teléfono: +57 300 123 4567
+                Teléfono: +57 3102964497
               </div>
             </div>
           </div>
@@ -46,11 +46,13 @@ export function Footer() {
           <div>
             <h4 className="text-lg font-semibold text-white mb-4">Síguenos</h4>
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-red-500 transition-colors">
+              <a
+                href="https://www.instagram.com/el_parche.plotter?igsh=MW42d3N5MjNxdDJocg=="
+                className="text-gray-400 hover:text-red-500 transition-colors"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Instagram className="w-6 h-6" />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-red-500 transition-colors">
-                <Facebook className="w-6 h-6" />
               </a>
             </div>
           </div>

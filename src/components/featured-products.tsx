@@ -1,90 +1,98 @@
 "use client"
 
-import { useScrollAnimation } from "../hooks/use-scroll-animation"
-import { Button } from "./ui/button"
+import { useEffect, useState } from "react"
 import { ShoppingCart } from "lucide-react"
-import { useCartStore } from "../store/useCartStore" // 1. Importa la store del carrito
-import { Product } from "../types/products" // Importa el tipo Product si es necesario
+import { useScrollAnimation } from "../hooks/use-scroll-animation"
+
+// Definimos el tipo de un producto para mayor seguridad
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  imgUrl?: string;
+}
 
 export function FeaturedProducts() {
-  const { ref, isVisible } = useScrollAnimation()
-  const addToCart = useCartStore((state) => state.addToCart) // 2. Obtén la función para añadir
+  const { ref: sectionRef, isVisible: sectionVisible } = useScrollAnimation(0.2)
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Asegúrate que los productos aquí coincidan con la estructura del tipo 'Product'
-  const featuredProducts: Omit<Product, 'id' | 'imgUrl'>[] = [
-    {
-      name: "Retablo Familiar Premium",
-      price: "45000",
-      image: "/family-portrait-wooden-plaque-dark-background.jpg",
-      description: "Retablo personalizado en madera de alta calidad",
-    },
-    {
-      name: "Retablo Mascota Especial",
-      price: "35000",
-      image: "/pet-portrait-wooden-plaque-dark-background.jpg",
-      description: "Inmortaliza a tu mascota en un hermoso retablo",
-    },
-    {
-      name: "Retablo Pareja Romántico",
-      price: "40000",
-      image: "/couple-portrait-wooden-plaque-dark-background.jpg",
-      description: "El regalo perfecto para parejas enamoradas",
-    },
-  ]
-  
-  const formatPrice = (priceString: string) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
+  useEffect(() => {
+    const fetchFeaturedProducts = async () => {
+      try {
+        // Asegúrate de que la URL de la API sea la correcta para tu entorno
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products/destacados`)
+        if (!response.ok) {
+          throw new Error("No se pudieron cargar los productos destacados")
+        }
+        const data: Product[] = await response.json()
+        setFeaturedProducts(data)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Un error desconocido ocurrió")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchFeaturedProducts()
+  }, [])
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(Number(priceString));
-  };
+    }).format(price)
+  }
 
   return (
-    <section ref={ref} className="py-20 px-4 bg-gradient-to-b from-black to-gray-900">
-      <div className="max-w-7xl mx-auto">
-        <div
-          className={`text-center mb-16 transition-all duration-1000 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
-        >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white font-serif">Productos Destacados</h2>
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto">Descubre nuestros retablos más populares y únicos</p>
+    <section ref={sectionRef} className="py-20 bg-black text-white">
+      <div
+        className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-1000 ${
+          sectionVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        }`}
+      >
+        <div className="text-center mb-12">
+          <h2 className="text-4xl md:text-5xl font-bold font-serif">PRODUCTOS DESTACADOS</h2>
+          <p className="mt-4 text-lg text-gray-400">Descubre nuestros retablos más populares y únicos</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {featuredProducts.map((product, index) => (
-            <div
-              key={index}
-              className={`bg-gray-800/50 backdrop-blur-sm rounded-lg overflow-hidden border border-red-500/20 hover:border-red-500/50 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-red-500/20 ${
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
-              }`}
-              style={{ transitionDelay: `${index * 200}ms` }}
-            >
-              <div className="aspect-square overflow-hidden">
-                <img
-                  src={product.image || "/placeholder.svg"}
-                  alt={product.name}
-                  className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <h3 className="text-xl font-bold text-white mb-2">{product.name}</h3>
-                <p className="text-gray-300 mb-4 flex-grow">{product.description}</p>
-                
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-auto">
-                  <span className="text-2xl font-bold text-red-500 text-center sm:text-left">{formatPrice(product.price)}</span>
-                  {/* 3. Llama a la función addToCart con los datos del producto */}
-                  <Button 
-                    onClick={() => addToCart({id: `featured-${index}`, ...product} as Product)}
-                    className="bg-red-600 hover:bg-red-700 text-white transition-all duration-300 hover:scale-105 shrink-0"
-                  >
-                    <ShoppingCart className="w-4 h-4 mr-2" />
-                    Añadir al Carrito
-                  </Button>
+        {isLoading ? (
+          <div className="text-center">Cargando productos...</div>
+        ) : error ? (
+          <div className="text-center text-red-500">{error}</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {featuredProducts.map((product, index) => (
+              <div
+                key={product.id}
+                className={`bg-gray-900/50 border border-red-500/20 rounded-lg overflow-hidden shadow-lg hover:shadow-red-500/30 transition-shadow duration-300 transform hover:-translate-y-1`}
+              >
+                <div className="relative h-72">
+                  <img
+                    src={product.imgUrl || "https://via.placeholder.com/400x300?text=Sin+Imagen"}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="p-6">
+                  <h3 className="text-2xl font-bold mb-2 font-serif">{product.name}</h3>
+                  <p className="text-gray-400 mb-4 h-16">{product.description}</p>
+                  <div className="flex justify-between items-center mt-6">
+                    <span className="text-3xl font-bold text-red-500">{formatPrice(product.price)}</span>
+                    <button className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full flex items-center transition-colors duration-300">
+                      <ShoppingCart className="w-5 h-5 mr-2" />
+                      Añadir al Carrito
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   )
