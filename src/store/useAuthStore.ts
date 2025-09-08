@@ -1,9 +1,9 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { jwtDecode } from "jwt-decode";
-import { useCartStore } from "./useCartStore"; // Se importa el store del carrito
+import { useCartStore } from "./useCartStore";
 
-// Definición de la interfaz del usuario decodificado del token
+// Definición de la interfaz del usuario
 interface User {
   id: string;
   name: string;
@@ -11,9 +11,13 @@ interface User {
   isAdmin: boolean;
   imageProfile?: string;
   isProfileComplete?: boolean;
+  // Añadimos las otras propiedades que vienen de la base de datos
+  phone?: string | number | null;
+  address?: string | null;
+  city?: string | null;
 }
 
-// Definición del estado y acciones del store de autenticación
+// Definición del estado y acciones del store
 interface AuthState {
   token: string | null;
   user: User | null;
@@ -22,6 +26,7 @@ interface AuthState {
   login: (token: string) => Promise<void>;
   logout: () => void;
   init: () => void;
+  updateUserProfile: (newProfileData: Partial<User>) => void; // <-- 1. AÑADIMOS LA FUNCIÓN A LA INTERFAZ
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -35,48 +40,50 @@ export const useAuthStore = create<AuthState>()(
       login: async (token: string) => {
         try {
           const decoded: User = jwtDecode(token);
-          set({ token, user: decoded, isLoggedIn: true, isAuthLoading: false });
+          // Hacemos una petición al backend para obtener el perfil completo
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${decoded.id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (!response.ok) throw new Error('No se pudo obtener el perfil completo del usuario.');
+          
+          const fullUserProfile = await response.json();
+          set({ token, user: fullUserProfile, isLoggedIn: true, isAuthLoading: false });
+
         } catch (error) {
-          console.error("Fallo al decodificar el token:", error);
-          get().logout(); // Si el token es inválido, se limpia la sesión.
+          console.error("Fallo al decodificar el token o al obtener el perfil:", error);
+          get().logout();
         }
       },
 
-      // --- FUNCIÓN DE LOGOUT CORREGIDA ---
       logout: () => {
-        // 1. Llama a la acción para limpiar el carrito del store local.
         useCartStore.getState().clearCart();
-        
-        // 2. Limpia los datos de autenticación del usuario en el estado.
         set({ token: null, user: null, isLoggedIn: false, isAuthLoading: false });
-        
-        // 3. Se asegura de que el estado persistente también se limpie.
-        // Zustand `persist` se encarga de esto al hacer set, pero una limpieza manual es más segura.
         localStorage.removeItem('auth-storage');
-        localStorage.removeItem('cart-storage'); // Limpiamos también el carrito por si acaso
+        localStorage.removeItem('cart-storage');
+      },
+      
+      // --- 2. AÑADIMOS LA IMPLEMENTACIÓN DE LA FUNCIÓN ---
+      updateUserProfile: (newProfileData) => {
+        set((state) => ({
+          user: state.user ? { ...state.user, ...newProfileData } : null
+        }));
       },
 
       init: () => {
+        // La función init ahora llama a login para asegurar que siempre tengamos el perfil completo
         const { token } = get();
         if (token) {
-          try {
-            const decoded: User = jwtDecode(token);
-            // Comprobamos si el token ha expirado
-            if (Date.now() >= (decoded as any).exp * 1000) {
-              throw new Error("Token expirado");
-            }
-            set({ user: decoded, isLoggedIn: true, isAuthLoading: false });
-          } catch (error) {
-            console.error("Error en inicialización de Auth:", error);
-            get().logout(); // Si hay cualquier problema con el token, se cierra la sesión.
-          }
+          get().login(token).catch(() => {
+             // Si el login falla (ej. token expirado), el logout se maneja dentro de login()
+            console.error("Falló la reinicialización de la sesión.");
+          });
         } else {
           set({ isAuthLoading: false });
         }
       },
     }),
     {
-      name: "auth-storage", // Nombre para el almacenamiento local
+      name: "auth-storage",
       storage: createJSONStorage(() => localStorage),
     }
   )

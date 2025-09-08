@@ -25,7 +25,8 @@ interface CartState {
   decreaseQuantity: (productId: string) => void;
   clearCart: () => void;
   syncCart: () => Promise<void>;
-  fetchAndSetCart: () => Promise<void>; // <-- NUEVA FUNCIÓN
+  fetchAndSetCart: () => Promise<void>;
+  getTotalPrice: () => number; // <-- 1. AÑADIR EL TIPO DE LA FUNCIÓN
 }
 
 export const useCartStore = create<CartState>()(
@@ -33,6 +34,12 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       
+      // --- 2. AÑADIR LA IMPLEMENTACIÓN DE LA FUNCIÓN ---
+      getTotalPrice: () => {
+        const { items } = get();
+        return items.reduce((total, item) => total + Number(item.price) * item.quantity, 0);
+      },
+
       addToCart: (product) => {
         const currentItems = get().items;
         const existingItem = currentItems.find((item) => item.id === product.id);
@@ -100,8 +107,6 @@ export const useCartStore = create<CartState>()(
         set({ items: [] });
       },
       
-      // --- NUEVA FUNCIÓN ---
-      // Trae el carrito del servidor y reemplaza el local. La fuente de verdad es el backend.
       fetchAndSetCart: async () => {
         const { token } = useAuthStore.getState();
         if (!token) return;
@@ -132,7 +137,6 @@ export const useCartStore = create<CartState>()(
         }));
         
         try {
-         
           await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cart/sync`, { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
