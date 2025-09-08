@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ShoppingCart } from "lucide-react"
+import { ShoppingCart, Check } from "lucide-react"
 import { useScrollAnimation } from "../hooks/use-scroll-animation"
+import { useCart } from "../hooks/use-cart" // Importamos el hook del carrito
 
 // Definimos el tipo de un producto para mayor seguridad
 interface Product {
@@ -11,6 +12,7 @@ interface Product {
   description: string;
   price: number;
   imgUrl?: string;
+  stock: number;
 }
 
 export function FeaturedProducts() {
@@ -18,11 +20,12 @@ export function FeaturedProducts() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [addedProductId, setAddedProductId] = useState<string | null>(null)
+  const { addToCart } = useCart() // Obtenemos la función para añadir al carrito
 
   useEffect(() => {
     const fetchFeaturedProducts = async () => {
       try {
-        // Asegúrate de que la URL de la API sea la correcta para tu entorno
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products/destacados`)
         if (!response.ok) {
           throw new Error("No se pudieron cargar los productos destacados")
@@ -38,6 +41,14 @@ export function FeaturedProducts() {
 
     fetchFeaturedProducts()
   }, [])
+
+  const handleAddToCart = (product: Product) => {
+    addToCart(product)
+    setAddedProductId(product.id)
+    setTimeout(() => {
+      setAddedProductId(null)
+    }, 2000)
+  }
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -66,16 +77,16 @@ export function FeaturedProducts() {
           <div className="text-center text-red-500">{error}</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredProducts.map((product, index) => (
+            {featuredProducts.map((product) => (
               <div
                 key={product.id}
-                className={`bg-gray-900/50 border border-red-500/20 rounded-lg overflow-hidden shadow-lg hover:shadow-red-500/30 transition-shadow duration-300 transform hover:-translate-y-1`}
+                className="bg-gray-900/50 border border-red-500/20 rounded-lg overflow-hidden shadow-lg hover:shadow-red-500/30 transition-shadow duration-300 group"
               >
-                <div className="relative h-72">
+                <div className="relative h-72 overflow-hidden">
                   <img
                     src={product.imgUrl || "https://via.placeholder.com/400x300?text=Sin+Imagen"}
                     alt={product.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                   />
                 </div>
                 <div className="p-6">
@@ -83,9 +94,26 @@ export function FeaturedProducts() {
                   <p className="text-gray-400 mb-4 h-16">{product.description}</p>
                   <div className="flex justify-between items-center mt-6">
                     <span className="text-3xl font-bold text-red-500">{formatPrice(product.price)}</span>
-                    <button className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full flex items-center transition-colors duration-300">
-                      <ShoppingCart className="w-5 h-5 mr-2" />
-                      Añadir al Carrito
+                    <button
+                      onClick={() => handleAddToCart(product)}
+                      disabled={addedProductId === product.id}
+                      className={`font-bold py-2 px-4 rounded-full flex items-center transition-colors duration-300 ${
+                        addedProductId === product.id
+                          ? "bg-green-600"
+                          : "bg-red-600 hover:bg-red-700"
+                      }`}
+                    >
+                      {addedProductId === product.id ? (
+                        <>
+                          <Check className="w-5 h-5 mr-2" />
+                          Añadido!
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingCart className="w-5 h-5 mr-2" />
+                          Añadir al Carrito
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
