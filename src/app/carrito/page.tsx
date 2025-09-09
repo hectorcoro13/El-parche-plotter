@@ -12,15 +12,13 @@ import { useUIStore } from "../../store/useUIStore";
 import { useAuthStore } from "../../store/useAuthStore";
 
 export default function CartPage() {
-  // --- 1. CAMBIO AQUÍ ---
-  // Reemplazamos 'removeFromCart' por la nueva función 'decreaseOrRemoveItem'.
-  const { items, decreaseOrRemoveItem, getTotalPrice } = useCartStore();
-  const cartItemCount = useCartStore(state => state.items.length); // Usamos la longitud para el estado vacío
-  // --- FIN DEL CAMBIO ---
+  // --- CORRECCIÓN APLICADA AQUÍ ---
+  // Se obtienen las funciones correctas del store: decreaseQuantity y getTotalPrice.
+  const { items, decreaseQuantity, getTotalPrice } = useCartStore();
+  const cartItemCount = useCartStore(state => state.items.length);
 
   const { isLoggedIn } = useAuthStore();
   const openAuthModal = useUIStore((state) => state.openAuthModal);
-
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -54,7 +52,7 @@ export default function CartPage() {
             <div className="md:col-span-2 space-y-4">
               {items.map((item) => (
                 <div
-                  key={item.id} // La key sigue siendo el id único
+                  key={item.id}
                   className="flex items-center bg-gray-900 p-4 rounded-lg border border-red-500/10"
                 >
                   <Image
@@ -74,15 +72,14 @@ export default function CartPage() {
                     <p className="font-bold text-lg">
                       {formatPrice(Number(item.price) * item.quantity)}
                     </p>
-                    {/* --- 2. CAMBIO AQUÍ --- */}
-                    {/* El botón ahora llama a la nueva función. */}
+                    {/* --- CORRECCIÓN APLICADA AQUÍ --- */}
+                    {/* El botón ahora llama a la función correcta 'decreaseQuantity'. */}
                     <button
-                      onClick={() => decreaseOrRemoveItem(item.id)}
+                      onClick={() => decreaseQuantity(item.id)}
                       className="text-gray-500 hover:text-red-400 mt-1 transition-colors"
                     >
                       <Trash2 size={18} />
                     </button>
-                    {/* --- FIN DEL CAMBIO --- */}
                   </div>
                 </div>
               ))}
