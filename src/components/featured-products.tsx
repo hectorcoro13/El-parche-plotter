@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { ShoppingCart, Check } from "lucide-react"
 import { useScrollAnimation } from "../hooks/use-scroll-animation"
-import { useCartStore } from "../hooks/use-cart"
+import { useCartStore } from "../store/useCartStore"
 
 interface Product {
   id: string;
@@ -12,6 +12,7 @@ interface Product {
   price: number;
   imgUrl?: string;
   stock: number;
+  category: { id: string; name: string };
 }
 
 export function FeaturedProducts() {
@@ -20,7 +21,7 @@ export function FeaturedProducts() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [addedProductId, setAddedProductId] = useState<string | null>(null)
-  const { addToCart } = useCartStore()
+  const addToCart = useCartStore((state) => state.addToCart)
 
   useEffect(() => {
     const fetchFeaturedProducts = async () => {
