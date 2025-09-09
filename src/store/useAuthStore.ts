@@ -3,7 +3,9 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { jwtDecode } from "jwt-decode";
 import { useCartStore } from "./useCartStore";
 
-// Definición de la interfaz del usuario
+// --- INTERFAZ CORREGIDA ---
+// Se añaden todas las propiedades del usuario que vienen del backend
+// para que TypeScript no muestre errores en otras partes de la aplicación.
 interface User {
   id: string;
   name: string;
@@ -11,10 +13,12 @@ interface User {
   isAdmin: boolean;
   imageProfile?: string;
   isProfileComplete?: boolean;
-  // Añadimos las otras propiedades que vienen de la base de datos
   phone?: string | number | null;
   address?: string | null;
   city?: string | null;
+  identificationType?: string | null;
+  identificationNumber?: string | null;
+  order?: any[]; 
 }
 
 // Definición del estado y acciones del store
@@ -26,7 +30,7 @@ interface AuthState {
   login: (token: string) => Promise<void>;
   logout: () => void;
   init: () => void;
-  updateUserProfile: (newProfileData: Partial<User>) => void; // <-- 1. AÑADIMOS LA FUNCIÓN A LA INTERFAZ
+  updateUserProfile: (newProfileData: Partial<User>) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -39,43 +43,48 @@ export const useAuthStore = create<AuthState>()(
 
       login: async (token: string) => {
         try {
-          const decoded: User = jwtDecode(token);
-          // Hacemos una petición al backend para obtener el perfil completo
+          // Decodificamos solo para obtener el ID, el perfil completo lo traemos del fetch
+          const decoded: { id: string } = jwtDecode(token);
+          
           const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${decoded.id}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          if (!response.ok) throw new Error('No se pudo obtener el perfil completo del usuario.');
+
+          if (!response.ok) {
+            throw new Error('No se pudo obtener el perfil completo del usuario.');
+          }
           
-          const fullUserProfile = await response.json();
+          const fullUserProfile: User = await response.json();
           set({ token, user: fullUserProfile, isLoggedIn: true, isAuthLoading: false });
 
         } catch (error) {
           console.error("Fallo al decodificar el token o al obtener el perfil:", error);
-          get().logout();
+          get().logout(); // Si algo falla, cerramos sesión para evitar un estado inconsistente
         }
       },
 
       logout: () => {
+        // Limpia el carrito y el estado de autenticación
         useCartStore.getState().clearCart();
         set({ token: null, user: null, isLoggedIn: false, isAuthLoading: false });
+        // Limpia el almacenamiento local para un logout completo
         localStorage.removeItem('auth-storage');
         localStorage.removeItem('cart-storage');
       },
       
-      // --- 2. AÑADIMOS LA IMPLEMENTACIÓN DE LA FUNCIÓN ---
       updateUserProfile: (newProfileData) => {
         set((state) => ({
           user: state.user ? { ...state.user, ...newProfileData } : null
         }));
       },
 
+      // Se ejecuta al cargar la aplicación para restaurar la sesión si existe
       init: () => {
-        // La función init ahora llama a login para asegurar que siempre tengamos el perfil completo
         const { token } = get();
         if (token) {
+          // Intenta loguear de nuevo con el token existente para refrescar los datos del usuario
           get().login(token).catch(() => {
-             // Si el login falla (ej. token expirado), el logout se maneja dentro de login()
-            console.error("Falló la reinicialización de la sesión.");
+            console.error("Falló la reinicialización de la sesión. El token puede haber expirado.");
           });
         } else {
           set({ isAuthLoading: false });
@@ -83,7 +92,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: "auth-storage",
+      name: "auth-storage", // Nombre de la clave en localStorage
       storage: createJSONStorage(() => localStorage),
     }
   )

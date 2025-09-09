@@ -26,6 +26,8 @@ export function SignUpForm() {
     phone: "",
     country: "Colombia",
     city: "",
+    identificationType: "CC",
+    identificationNumber: "",
   });
   const [errors, setErrors] = useState({
     email: "",
@@ -279,6 +281,34 @@ export function SignUpForm() {
           {errors.phone && <p className={errorTextStyles}>{errors.phone}</p>}
         </div>
         <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="identificationType" className="text-xs text-gray-400">Tipo Doc.</label>
+            <select
+              name="identificationType"
+              id="identificationType"
+              value={formData.identificationType}
+              onChange={handleChange}
+              className={inputStyles}
+            >
+              <option value="CC">C.C.</option>
+              <option value="CE">C.E.</option>
+              <option value="NIT">NIT</option>
+              <option value="PASSPORT">Pasaporte</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="identificationNumber" className="text-xs text-gray-400"># Documento</label>
+            <input
+              type="text"
+              name="identificationNumber"
+              id="identificationNumber"
+              placeholder="Número de documento"
+              value={formData.identificationNumber}
+              onChange={handleChange}
+              className={inputStyles}
+              required
+            />
+          </div>
           <div>
             <select
               value={selectedDepartment}

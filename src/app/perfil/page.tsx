@@ -16,11 +16,13 @@ type User = {
   id: string;
   name: string;
   email: string;
-  phone?: string | number | null; 
-  address?: string | null;      
-  city?: string | null;        
-  imageProfile?: string | null; 
+  phone?: string | number | null;
+  address?: string | null;
+  city?: string | null;
+  imageProfile?: string | null;
   order?: any[];
+  identificationType?: string | null;
+  identificationNumber?: string | null;
 };
 
 export default function ProfilePage() {
@@ -42,8 +44,11 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setEditData({ ...editData, [e.target.name]: e.target.value });
+  // --- CORRECCIÓN CLAVE AQUÍ ---
+  // Un solo 'handleChange' que funciona tanto para inputs como para selects.
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setEditData({ ...editData, [name]: value });
   };
 
   const handleEditToggle = () => {
@@ -57,11 +62,21 @@ export default function ProfilePage() {
     if (!user || !editData) return;
     const token = useAuthStore.getState().token;
     try {
+      const bodyToUpdate = {
+        name: editData.name,
+        phone: Number(editData.phone),
+        address: editData.address,
+        city: editData.city,
+        identificationType: editData.identificationType,
+        identificationNumber: editData.identificationNumber,
+      };
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ name: editData.name, phone: Number(editData.phone), address: editData.address, city: editData.city }),
+        body: JSON.stringify(bodyToUpdate),
       });
+
       if (!response.ok) throw new Error("Error al guardar los cambios.");
       const updatedUser = await response.json();
       updateUserProfile(updatedUser);
@@ -79,12 +94,12 @@ export default function ProfilePage() {
       reader.readAsDataURL(e.target.files[0]);
     }
   };
-  
+
   const uploadCroppedImage = async (croppedImageBlob: Blob) => {
     if (user) {
       const token = useAuthStore.getState().token;
       const formData = new FormData();
-      formData.append('file', croppedImageBlob, 'profile.jpg'); 
+      formData.append('file', croppedImageBlob, 'profile.jpg');
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/file/UploadProfile/${user.id}`, {
           method: 'POST',
@@ -100,7 +115,7 @@ export default function ProfilePage() {
       }
     }
   };
-  
+
   const inputStyles = "w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500";
 
   if (!hasMounted) {
@@ -115,7 +130,7 @@ export default function ProfilePage() {
 
   return (
     <>
-      <ImageCropper 
+      <ImageCropper
         imageSrc={imageToCrop}
         onCropComplete={uploadCroppedImage}
         onClose={() => setImageToCrop(null)}
@@ -144,9 +159,9 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
                 <div className="flex flex-col items-center space-y-4">
                   <div className="relative w-40 h-40">
-                    <Image 
-                      src={user.imageProfile && user.imageProfile !== 'No image' ? user.imageProfile : "/placeholder-user.jpg"} 
-                      alt="Foto de perfil" 
+                    <Image
+                      src={user.imageProfile && user.imageProfile !== 'No image' ? user.imageProfile : "/placeholder-user.jpg"}
+                      alt="Foto de perfil"
                       width={160} height={160}
                       style={{ objectFit: 'cover' }}
                       className="rounded-full border-2 border-red-500/50"
@@ -164,33 +179,48 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-6">
                       <div>
-                        <h2 className="text-sm ...">Nombre Completo</h2>
+                        <h2 className="text-sm text-gray-400 mb-1">Nombre Completo</h2>
                         {isEditing ? <input name="name" onChange={handleInputChange} value={editData.name || ''} className={inputStyles} /> : <p className="text-xl">{user.name}</p>}
                       </div>
                       <div>
-                        <h2 className="text-sm ...">Email</h2>
+                        <h2 className="text-sm text-gray-400 mb-1">Email</h2>
                         <p className="text-xl text-gray-400">{user.email}</p>
                       </div>
                        <div>
-                        <h2 className="text-sm ...">Teléfono</h2>
-                        {isEditing ? <input name="phone" onChange={handleInputChange} value={editData.phone || ''} className={inputStyles} /> : <p className="text-xl">{user.phone}</p>}
+                        <h2 className="text-sm text-gray-400 mb-1">Teléfono</h2>
+                        {isEditing ? <input name="phone" onChange={handleInputChange} value={editData.phone || ''} className={inputStyles} /> : <p className="text-xl">{user.phone || 'No especificado'}</p>}
                       </div>
                     </div>
                     <div className="space-y-6">
                        <div>
-                        <h2 className="text-sm ...">Dirección</h2>
-                        {isEditing ? <input name="address" onChange={handleInputChange} value={editData.address || ''} className={inputStyles} /> : <p className="text-xl">{user.address}</p>}
+                        <h2 className="text-sm text-gray-400 mb-1">Dirección</h2>
+                        {isEditing ? <input name="address" onChange={handleInputChange} value={editData.address || ''} className={inputStyles} /> : <p className="text-xl">{user.address || 'No especificada'}</p>}
                       </div>
                       <div>
-                        <h2 className="text-sm ...">Ciudad</h2>
-                        {isEditing ? <input name="city" onChange={handleInputChange} value={editData.city || ''} className={inputStyles} /> : <p className="text-xl">{user.city}</p>}
+                        <h2 className="text-sm text-gray-400 mb-1">Ciudad</h2>
+                        {isEditing ? <input name="city" onChange={handleInputChange} value={editData.city || ''} className={inputStyles} /> : <p className="text-xl">{user.city || 'No especificada'}</p>}
+                      </div>
+                      <div>
+                        <h2 className="text-sm text-gray-400 mb-1">Tipo de Documento</h2>
+                        {isEditing ? (
+                        <select name="identificationType" onChange={handleInputChange} value={editData.identificationType || 'CC'} className={inputStyles}>
+                            <option value="CC">Cédula de Ciudadanía</option>
+                            <option value="CE">Cédula de Extranjería</option>
+                            <option value="NIT">NIT</option>
+                            <option value="PASSPORT">Pasaporte</option>
+                        </select>
+                        ) : <p className="text-xl">{user.identificationType || 'No especificado'}</p>}
+                      </div>
+                      <div>
+                        <h2 className="text-sm text-gray-400 mb-1">Número de Documento</h2>
+                        {isEditing ? <input name="identificationNumber" onChange={handleInputChange} value={editData.identificationNumber || ''} className={inputStyles} placeholder="Ej: 123456789"/> : <p className="text-xl">{user.identificationNumber || 'No especificado'}</p>}
                       </div>
                     </div>
                   </div>
-                  <div className="mt-12 border-t ...">
-                      <h2 className="text-2xl ...">Mis Órdenes</h2>
-                      {user.order?.length > 0 ? ( <p>Aquí se mostrará el historial de órdenes.</p> ) 
-                      : ( <p>Aún no has realizado ninguna compra.</p> )}
+                  <div className="mt-12 border-t border-red-500/20 pt-8">
+                      <h2 className="text-2xl font-semibold mb-4">Mis Órdenes</h2>
+                      {Array.isArray(user.order) && user.order.length > 0 ? ( <p>Aquí se mostrará el historial de órdenes.</p> )
+                      : ( <p className="text-gray-400">Aún no has realizado ninguna compra.</p> )}
                   </div>
                 </div>
             </div>
