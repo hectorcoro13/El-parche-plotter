@@ -63,30 +63,41 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
 
   // --- LÓGICA DE PAGO COMPLETAMENTE REESTRUCTURADA ---
   const handleOnSubmit = async (formData: any) => {
+    // Para pagos con tarjeta, necesitamos procesarlos en el backend.
+    // Para otros métodos (PSE, Efecty), MercadoPago maneja la redirección.
+    // Esta función ahora manejará principalmente los pagos con tarjeta.
+    
+    // Si no hay un token de tarjeta, asumimos que es otro método de pago
+    // y no hacemos nada, dejando que MercadoPago se encargue.
+    if (!formData.token) {
+      console.log("Método de pago sin token, MercadoPago se encargará de la redirección.");
+      return;
+    }
+
     try {
-      // 1. Procesar el pago REAL con MercadoPago a través de nuestro backend.
+      // Procesar el pago REAL con MercadoPago a través de nuestro backend.
       const paymentResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mercadopago/process-payment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`, // Enviamos el token por si se necesita
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify(formData),
       });
 
       const paymentResult = await paymentResponse.json();
 
-      // 2. Verificar si el pago fue aprobado. Si no, detener el proceso y mostrar error.
       if (paymentResult.status !== 'approved') {
-        throw new Error(paymentResult.status_detail || 'El pago fue rechazado. Por favor, revisa tus datos.');
+        throw new Error(paymentResult.message || 'El pago fue rechazado. Por favor, revisa tus datos.');
       }
 
-      // 3. Si el pago fue aprobado, AHORA SÍ creamos la orden en nuestra base de datos.
+      // Si el pago con tarjeta fue exitoso, creamos la orden.
       const orderData = {
         userId: user.id,
-        products: items.map(item => ({ id: item.id, quantity: item.quantity })),
+        // Usamos una lógica más simple para obtener los productos del carrito actual
+        products: items.map(item => ({ id: item.id })),
       };
-
+      
       const orderResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -94,13 +105,12 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
       });
 
       if (!orderResponse.ok) {
-        throw new Error('El pago fue exitoso pero hubo un problema al registrar tu orden. Por favor, contacta a soporte.');
+        throw new Error('El pago fue exitoso pero hubo un problema al registrar tu orden.');
       }
 
-      // 4. Si todo salió bien, mostramos la confirmación final.
       await Swal.fire({
         title: '¡Pago Exitoso!',
-        text: 'Tu compra ha sido realizada. Revisa tu correo para ver los detalles.',
+        text: 'Tu compra ha sido realizada.',
         icon: 'success',
         timer: 3000,
         showConfirmButton: false,
@@ -111,7 +121,6 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
       router.push('/perfil');
 
     } catch (err: any) {
-      console.error("Error en el proceso de pago:", err);
       Swal.fire({
         title: 'Error en el Pago',
         text: err.message,
@@ -153,7 +162,7 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
                   bankTransfer: 'all',
                   ticket: 'all',
                 },
-                visual: {
+                visual: { 
                   style: { 
                     theme: 'dark', 
                     customVariables: { 
