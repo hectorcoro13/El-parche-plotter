@@ -34,6 +34,7 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
 
   useEffect(() => {
     const createPreference = async () => {
+      if (items.length === 0 || !token) return; // No hacer nada si no hay items o token
       setIsLoading(true);
       setError(null);
       try {
@@ -42,11 +43,20 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
         }));
 
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mercadopago/create-preference`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
+          method: "POST",
+          // --- ESTA ES LA LÍNEA CORREGIDA ---
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}` // <-- AÑADIMOS EL TOKEN AQUÍ
+          },
           body: JSON.stringify({ items: itemsToCreate }),
         });
         
         const data = await response.json();
+        if (!response.ok) {
+           throw new Error(data.message || "No se pudo obtener la preferencia de pago.");
+        }
+        
         if (data.preferenceId) {
           setPreferenceId(data.preferenceId);
         } else {
@@ -58,24 +68,16 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
         setIsLoading(false);
       }
     };
-    if (items.length > 0) createPreference();
-  }, [items]);
+    createPreference();
+  }, [items, token]); // <-- Añadimos 'token' a las dependencias
 
-  // --- LÓGICA DE PAGO COMPLETAMENTE REESTRUCTURADA ---
   const handleOnSubmit = async (formData: any) => {
-    // Para pagos con tarjeta, necesitamos procesarlos en el backend.
-    // Para otros métodos (PSE, Efecty), MercadoPago maneja la redirección.
-    // Esta función ahora manejará principalmente los pagos con tarjeta.
-    
-    // Si no hay un token de tarjeta, asumimos que es otro método de pago
-    // y no hacemos nada, dejando que MercadoPago se encargue.
     if (!formData.token) {
       console.log("Método de pago sin token, MercadoPago se encargará de la redirección.");
       return;
     }
-
+    
     try {
-      // Procesar el pago REAL con MercadoPago a través de nuestro backend.
       const paymentResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mercadopago/process-payment`, {
         method: "POST",
         headers: {
@@ -91,13 +93,11 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
         throw new Error(paymentResult.message || 'El pago fue rechazado. Por favor, revisa tus datos.');
       }
 
-      // Si el pago con tarjeta fue exitoso, creamos la orden.
       const orderData = {
         userId: user.id,
-        // Usamos una lógica más simple para obtener los productos del carrito actual
-        products: items.map(item => ({ id: item.id })),
+        products: items.map(item => ({ id: item.id, quantity: item.quantity })),
       };
-      
+
       const orderResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -105,7 +105,7 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
       });
 
       if (!orderResponse.ok) {
-        throw new Error('El pago fue exitoso pero hubo un problema al registrar tu orden.');
+        throw new Error('El pago fue exitoso pero hubo un problema al registrar tu orden. Contacta a soporte.');
       }
 
       await Swal.fire({
@@ -121,6 +121,7 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
       router.push('/perfil');
 
     } catch (err: any) {
+      console.error("Error en el proceso de pago:", err);
       Swal.fire({
         title: 'Error en el Pago',
         text: err.message,
