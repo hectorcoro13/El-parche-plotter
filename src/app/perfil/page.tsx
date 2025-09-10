@@ -44,8 +44,6 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  // --- CORRECCIÓN FINAL AQUÍ ---
-  // Se amplía el tipo para que acepte eventos de cambio de inputs Y selects.
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setEditData({ ...editData, [e.target.name]: e.target.value });
   };
@@ -116,7 +114,7 @@ export default function ProfilePage() {
   };
   
   const inputStyles = "w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500";
-  const labelStyles = "text-sm text-gray-400 mb-1"; // Estilo para las etiquetas
+  const labelStyles = "text-sm text-gray-400 mb-1"; 
 
   if (!hasMounted) {
     return (
@@ -219,8 +217,12 @@ export default function ProfilePage() {
                   </div>
                   <div className="mt-12 border-t ...">
                       <h2 className="text-2xl ...">Mis Órdenes</h2>
-                      {(user.order?.length ?? 0) > 0 ? ( <p>Aquí se mostrará el historial de órdenes.</p> ) 
-                      : ( <p>Aún no has realizado ninguna compra.</p> )}
+                      {/* --- CORRECCIÓN APLICADA AQUÍ --- */}
+                      {(user.order?.length ?? 0) > 0 ? ( 
+                        <p>Aquí se mostrará el historial de órdenes.</p>
+                      ) : ( 
+                        <p>Aún no has realizado ninguna compra.</p>
+                      )}
                   </div>
                 </div>
             </div>
