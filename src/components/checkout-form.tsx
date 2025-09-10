@@ -34,7 +34,7 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
 
   useEffect(() => {
     const createPreference = async () => {
-      if (items.length === 0 || !token) return; // No hacer nada si no hay items o token
+      if (items.length === 0 || !token) return; 
       setIsLoading(true);
       setError(null);
       try {
