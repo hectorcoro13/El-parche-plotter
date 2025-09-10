@@ -23,6 +23,7 @@ type User = {
   order?: any[];
   identificationType?: string | null;
   identificationNumber?: string | null;
+  isProfileComplete?: boolean;
 };
 
 export default function ProfilePage() {
@@ -40,9 +41,17 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user) {
-      setEditData(user);
+        setEditData({
+            ...user,
+            // Aseguramos que los campos opcionales tengan valores predeterminados
+            phone: user.phone || '',
+            address: user.address || '',
+            city: user.city || '',
+            identificationType: user.identificationType || 'CC',
+            identificationNumber: user.identificationNumber || ''
+        });
     }
-  }, [user]);
+}, [user]);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setEditData({ ...editData, [e.target.name]: e.target.value });
@@ -50,7 +59,14 @@ export default function ProfilePage() {
 
   const handleEditToggle = () => {
     if (user && !isEditing) {
-      setEditData(user);
+      setEditData({
+        ...user,
+        phone: user.phone || '',
+        address: user.address || '',
+        city: user.city || '',
+        identificationType: user.identificationType || 'CC',
+        identificationNumber: user.identificationNumber || ''
+      });
     }
     setIsEditing(!isEditing);
   };
@@ -61,7 +77,8 @@ export default function ProfilePage() {
     try {
       const bodyToUpdate = {
         name: editData.name,
-        phone: Number(editData.phone),
+        // Convertimos el teléfono a número solo si es un string válido, de lo contrario a null
+        phone: editData.phone !== '' ? Number(editData.phone) : null,
         address: editData.address,
         city: editData.city,
         identificationType: editData.identificationType,
@@ -217,7 +234,6 @@ export default function ProfilePage() {
                   </div>
                   <div className="mt-12 border-t ...">
                       <h2 className="text-2xl ...">Mis Órdenes</h2>
-                      {/* --- CORRECCIÓN APLICADA AQUÍ --- */}
                       {(user.order?.length ?? 0) > 0 ? ( 
                         <p>Aquí se mostrará el historial de órdenes.</p>
                       ) : ( 
