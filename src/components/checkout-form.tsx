@@ -34,7 +34,7 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
 
   useEffect(() => {
     const createPreference = async () => {
-      if (items.length === 0 || !token) return; 
+      if (items.length === 0 || !token) return;
       setIsLoading(true);
       setError(null);
       try {
@@ -44,19 +44,18 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
 
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mercadopago/create-preference`, {
           method: "POST",
-          // --- ESTA ES LA LÍNEA CORREGIDA ---
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}` // <-- AÑADIMOS EL TOKEN AQUÍ
+            "Authorization": `Bearer ${token}`
           },
           body: JSON.stringify({ items: itemsToCreate }),
         });
-        
+
         const data = await response.json();
         if (!response.ok) {
            throw new Error(data.message || "No se pudo obtener la preferencia de pago.");
         }
-        
+
         if (data.preferenceId) {
           setPreferenceId(data.preferenceId);
         } else {
@@ -69,62 +68,54 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
       }
     };
     createPreference();
-  }, [items, token]); // <-- Añadimos 'token' a las dependencias
+  }, [items, token]);
 
   const handleOnSubmit = async (formData: any) => {
-    if (!formData.token) {
-      console.log("Método de pago sin token, MercadoPago se encargará de la redirección.");
-      return;
-    }
-    
-    try {
-      const paymentResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mercadopago/process-payment`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
+    // La información del pago ahora viene en el formData
+    const paymentResult = formData;
 
-      const paymentResult = await paymentResponse.json();
+    if (paymentResult.status === 'approved') {
+      try {
+        const orderData = {
+          userId: user.id,
+          products: items.map(item => ({ id: item.id })),
+        };
 
-      if (paymentResult.status !== 'approved') {
-        throw new Error(paymentResult.message || 'El pago fue rechazado. Por favor, revisa tus datos.');
+        const orderResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(orderData),
+        });
+
+        if (!orderResponse.ok) {
+          throw new Error('El pago fue exitoso pero hubo un problema al registrar tu orden. Contacta a soporte.');
+        }
+
+        await Swal.fire({
+          title: '¡Pago Exitoso!',
+          text: 'Tu compra ha sido realizada.',
+          icon: 'success',
+          timer: 3000,
+          showConfirmButton: false,
+          background: '#111827', color: '#FFFFFF'
+        });
+
+        clearCart();
+        router.push('/perfil');
+      } catch (err: any) {
+        console.error("Error al crear la orden después del pago:", err);
+        Swal.fire({
+          title: 'Error en la Orden',
+          text: err.message,
+          icon: 'error',
+          background: '#111827', color: '#FFFFFF'
+        });
       }
-
-      const orderData = {
-        userId: user.id,
-        products: items.map(item => ({ id: item.id, quantity: item.quantity })),
-      };
-
-      const orderResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(orderData),
-      });
-
-      if (!orderResponse.ok) {
-        throw new Error('El pago fue exitoso pero hubo un problema al registrar tu orden. Contacta a soporte.');
-      }
-
-      await Swal.fire({
-        title: '¡Pago Exitoso!',
-        text: 'Tu compra ha sido realizada.',
-        icon: 'success',
-        timer: 3000,
-        showConfirmButton: false,
-        background: '#111827', color: '#FFFFFF'
-      });
-      
-      clearCart();
-      router.push('/perfil');
-
-    } catch (err: any) {
-      console.error("Error en el proceso de pago:", err);
+    } else {
+      console.error("Pago no aprobado:", paymentResult);
       Swal.fire({
         title: 'Error en el Pago',
-        text: err.message,
+        text: paymentResult.message || 'El pago no fue aprobado. Por favor, revisa tus datos o el método de pago.',
         icon: 'error',
         background: '#111827', color: '#FFFFFF'
       });
@@ -143,7 +134,7 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
         </div>
         <Link href="/perfil" className="text-xs text-red-400 hover:underline mt-2 inline-block">Editar mis datos</Link>
       </div>
-      
+
       <div className="border-t border-gray-700 pt-6">
         <h3 className="text-lg font-semibold mb-4 text-red-400">2. Método de Pago</h3>
         {isLoading && <p>Cargando formulario de pago...</p>}
@@ -163,16 +154,16 @@ export function CheckoutForm({ user, items }: { user: User; items: CartItem[] })
                   bankTransfer: 'all',
                   ticket: 'all',
                 },
-                visual: { 
-                  style: { 
-                    theme: 'dark', 
-                    customVariables: { 
+                visual: {
+                  style: {
+                    theme: 'dark',
+                    customVariables: {
                       formBackgroundColor: '#111827',
                       baseColor: '#ef4444',
                       borderRadiusFull: '8px',
                       inputBackgroundColor: '#030712',
                       errorColor: '#fca5a5'
-                    } 
+                    }
                   }
                 }
               }}
