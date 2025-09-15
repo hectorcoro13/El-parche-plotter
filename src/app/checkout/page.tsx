@@ -6,8 +6,9 @@ import { Footer } from "../../components/footer";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useCartStore } from "../../store/useCartStore";
 import { useRouter } from "next/navigation";
+// Importamos el componente con la lógica correcta de Mercado Pago
 import { MercadoPagoButton } from "../../components/MercadoPagoButton";
-import Link from "next/link"; // Importa Link
+import Link from "next/link"; 
 
 export default function CheckoutPage() {
   const { isLoggedIn, user, isAuthLoading } = useAuthStore();
@@ -20,7 +21,6 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
-    // Proteger la ruta: si no está logueado o el carrito está vacío, lo redirigimos
     if (hasMounted && !isAuthLoading) {
       if (!isLoggedIn) {
         router.push("/carrito");
@@ -37,7 +37,6 @@ export default function CheckoutPage() {
     }).format(price);
   };
 
-  // Muestra un estado de carga mientras se verifica la sesión o se monta el componente
   if (!hasMounted || isAuthLoading || !user) {
     return (
       <div className="min-h-screen bg-black text-white flex justify-center items-center">
@@ -53,9 +52,8 @@ export default function CheckoutPage() {
         <h1 className="text-4xl font-bold font-serif mb-8 text-center">Finalizar Compra</h1>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Columna Izquierda: Formulario de pago y datos */}
           <div className="lg:col-span-2">
-            {/* Detalles de Contacto y Envío */}
+            {/* Sección de detalles de contacto y envío */}
             <div className="bg-gray-900 p-6 rounded-lg border border-red-500/20 space-y-6">
               <div>
                 <h3 className="text-lg font-semibold mb-2 text-red-400">1. Detalles de Contacto y Envío</h3>
@@ -68,9 +66,10 @@ export default function CheckoutPage() {
                 <Link href="/perfil" className="text-xs text-red-400 hover:underline mt-2 inline-block">Editar mis datos</Link>
               </div>
 
-              {/* Botón y formulario de Mercado Pago */}
+              {/* Aquí se renderiza el botón de Mercado Pago */}
               <div className="border-t border-gray-700 pt-6">
                 <h3 className="text-lg font-semibold mb-4 text-red-400">2. Método de Pago</h3>
+                {/* ⚠️ NOTA: El componente MercadoPagoButton ya contiene la lógica para renderizar el formulario. */}
                 <MercadoPagoButton items={items} />
               </div>
             </div>
