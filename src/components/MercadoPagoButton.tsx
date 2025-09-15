@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { initMercadoPago, Payment, StatusScreen } from "@mercadopago/sdk-react";
-import { Button } from "./ui/button";
+import { useState, useEffect, useMemo } from "react";
+import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useCartStore } from "../store/useCartStore"; 
 import Swal from 'sweetalert2';
 import { useRouter } from "next/navigation";
-import { useMemo } from 'react';
 
 // Tipado de los items del carrito
 interface CartItem {
@@ -19,7 +17,8 @@ interface CartItem {
 
 export function MercadoPagoButton({ items }: { items: CartItem[] }) {
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // 1. Añadimos un estado de carga para la creación de la preferencia
+  const [isPreferenceLoading, setIsPreferenceLoading] = useState(true); 
   const [error, setError] = useState<string | null>(null);
 
   const { token, user } = useAuthStore();
@@ -34,47 +33,53 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
     }
   }, []);
 
-  const createPreference = async () => {
-    if (!token) {
-        setError("Debes iniciar sesión para continuar con el pago.");
+  // 2. Usamos useEffect para crear la preferencia automáticamente al cargar el componente
+  useEffect(() => {
+    const createPreference = async () => {
+      // Si no hay token o no hay items, no hacemos nada.
+      if (!token || items.length === 0) {
+        setIsPreferenceLoading(false);
         return;
-    }
-    
-    setIsLoading(true);
-    setError(null);
-    try {
-      const itemsToCreate = items.map(item => ({
-        id: item.id,
-        name: item.name,
-        price: Number(item.price),
-        quantity: item.quantity,
-      }));
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/mercadopago/create-preference`,
-        {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}` 
-          },
-          body: JSON.stringify({ items: itemsToCreate }),
-        },
-      );
-      
-      const data = await response.json();
-      if (response.ok && data.preferenceId) {
-        setPreferenceId(data.preferenceId);
-      } else {
-        throw new Error(data.message || "Preference ID was not returned.");
       }
-    } catch (err: any) {
-      console.error("Error creating preference:", err);
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      
+      setError(null);
+      try {
+        const itemsToCreate = items.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: Number(item.price),
+          quantity: item.quantity,
+        }));
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/mercadopago/create-preference`,
+          {
+            method: "POST",
+            headers: { 
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}` 
+            },
+            body: JSON.stringify({ items: itemsToCreate }),
+          },
+        );
+        
+        const data = await response.json();
+        if (response.ok && data.preferenceId) {
+          setPreferenceId(data.preferenceId);
+        } else {
+          throw new Error(data.message || "No se pudo crear la preferencia de pago.");
+        }
+      } catch (err: any) {
+        console.error("Error creating preference:", err);
+        setError(err.message);
+      } finally {
+        setIsPreferenceLoading(false);
+      }
+    };
+
+    createPreference();
+  // Se ejecutará cuando el token o los items cambien.
+  }, [token, items]);
 
   const handleOnSubmit = async (formData: any) => {
     const paymentResult = formData;
@@ -134,17 +139,14 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
     return items.reduce((acc, item) => acc + Number(item.price) * item.quantity, 0);
   }, [items]);
 
+  // 3. El renderizado ahora maneja el estado de carga y muestra el brick directamente
   return (
     <div className="w-full">
-      {!preferenceId ? (
-        <Button
-          onClick={createPreference}
-          disabled={isLoading}
-          className="w-full bg-red-500 hover:bg-red-600"
-        >
-          {isLoading ? "Cargando..." : "Proceder al Pago"}
-        </Button>
-      ) : (
+      {isPreferenceLoading ? (
+        <p className="text-center text-gray-400">Cargando método de pago...</p>
+      ) : error ? (
+        <p className="text-red-500 text-sm mt-2 text-center">{error}</p>
+      ) : preferenceId ? (
         <Payment
           initialization={{
             amount: totalAmount,
@@ -154,7 +156,6 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
             paymentMethods: {
               creditCard: "all",
               debitCard: "all",
-              // La línea "mercadoPago: 'all'" ha sido eliminada para solucionar el error.
             },
             visual: {
               style: {
@@ -171,10 +172,10 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
           }}
           onSubmit={handleOnSubmit}
           onError={(error) => console.error(error)}
-          onReady={() => setIsLoading(false)}
         />
+      ) : (
+        <p className="text-center text-yellow-500">No se pudo inicializar el pago. Revisa tu sesión y los productos del carrito.</p>
       )}
-      {error && <p className="text-red-500 text-sm mt-2 text-center">{error}</p>}
     </div>
   );
 }
