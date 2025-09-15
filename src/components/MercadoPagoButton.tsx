@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { initMercadoPago, Payment, StatusScreen } from "@mercadopago/sdk-react";
+import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
 import { Button } from "./ui/button";
-import { useAuthStore } from "../store/useAuthStore"; // Importa el store de autenticación
+import { useAuthStore } from "../store/useAuthStore";
+import { useCartStore } from "../store/useCartStore"; // Importa el store del carrito
+import Swal from 'sweetalert2';
+import { useRouter } from "next/navigation";
 
 // Tipado de los items del carrito
 interface CartItem {
@@ -13,37 +16,24 @@ interface CartItem {
   price: string | number;
 }
 
-// Tipado para la respuesta del pago
-interface PaymentResponse {
-  id: number;
-  status: string;
-  detail: string;
-}
-
 export function MercadoPagoButton({ items }: { items: CartItem[] }) {
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paymentData, setPaymentData] = useState<PaymentResponse | null>(null);
-  
-  // Obtén el token del store de autenticación
-  const { token } = useAuthStore(); 
 
-  // La inicialización del SDK sigue siendo la misma.
+  const { token, user } = useAuthStore();
+  const { clearCart } = useCartStore();
+  const router = useRouter();
+
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY) {
-      initMercadoPago(process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY, {
-        locale: 'es-CO'
-      });
+      initMercadoPago(process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY, { locale: 'es-CO' });
     } else {
-      console.error("MercadoPago public key is not defined");
       setError("La configuración de pago no está disponible.");
     }
   }, []);
 
-  // La creación de la preferencia en el backend sigue siendo necesaria.
   const createPreference = async () => {
-    // Valida que el usuario esté autenticado antes de continuar
     if (!token) {
         setError("Debes iniciar sesión para continuar con el pago.");
         return;
@@ -65,7 +55,7 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
           method: "POST",
           headers: { 
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}` // <-- Envía el token en el encabezado
+            "Authorization": `Bearer ${token}` 
           },
           body: JSON.stringify({ items: itemsToCreate }),
         },
@@ -85,37 +75,63 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
     }
   };
 
-  // Esta es la función CLAVE para Checkout Bricks.
   const handleOnSubmit = async (formData: any) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mercadopago/process-payment`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+    // Aquí, 'formData' NO son los datos de la tarjeta. Es el resultado del pago.
+    const paymentResult = formData;
 
-      const result = await response.json() as PaymentResponse;
-      setPaymentData(result);
-      
-    } catch (err) {
-      console.error("Error processing payment:", err);
-      setError("Ocurrió un error al procesar tu pago.");
-    } finally {
-      setIsLoading(false);
+    if (paymentResult.status === 'approved') {
+      try {
+        const orderData = {
+          userId: user?.id,
+          products: items.map(item => ({ id: item.id })),
+        };
+        
+        // Llamamos a la API de órdenes directamente
+        const orderResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify(orderData),
+        });
+
+        if (!orderResponse.ok) {
+          throw new Error('El pago fue exitoso pero hubo un problema al registrar tu orden.');
+        }
+
+        await Swal.fire({
+          title: '¡Pago Exitoso!',
+          text: 'Tu compra ha sido realizada.',
+          icon: 'success',
+          timer: 3000,
+          showConfirmButton: false,
+          background: '#111827', color: '#FFFFFF'
+        });
+
+        clearCart();
+        router.push('/perfil');
+      } catch (err: any) {
+        console.error("Error al crear la orden después del pago:", err);
+        Swal.fire({
+          title: 'Error en la Orden',
+          text: err.message,
+          icon: 'error',
+          background: '#111827', color: '#FFFFFF'
+        });
+      }
+    } else {
+      console.error("Pago no aprobado:", paymentResult);
+      Swal.fire({
+        title: 'Error en el Pago',
+        text: 'El pago no fue aprobado. Por favor, revisa tus datos o el método de pago.',
+        icon: 'error',
+        background: '#111827', color: '#FFFFFF'
+      });
     }
   };
 
-  // Si ya tenemos un resultado del pago, mostramos la pantalla de estado.
-  if (paymentData) {
-    return (
-      <StatusScreen
-        initialization={{ paymentId: paymentData.id.toString() }}
-        customization={{ backUrls: { return: window.location.href } }}
-      />
-    );
-  }
-
+  // El componente Payment se encarga de renderizar el formulario.
   return (
     <div className="w-full">
       {!preferenceId ? (
@@ -138,6 +154,18 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
               debitCard: "all",
               mercadoPago: "all",
             },
+            visual: {
+              style: {
+                theme: 'dark',
+                customVariables: {
+                  formBackgroundColor: '#111827',
+                  baseColor: '#ef4444',
+                  borderRadiusFull: '8px',
+                  inputBackgroundColor: '#030712',
+                  errorColor: '#fca5a5'
+                }
+              }
+            }
           }}
           onSubmit={handleOnSubmit}
           onError={(error) => console.error(error)}
