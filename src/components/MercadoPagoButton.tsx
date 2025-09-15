@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-// 1. Importa los Bricks necesarios: Payment para el formulario y StatusScreen para la pantalla de resultado.
 import { initMercadoPago, Payment, StatusScreen } from "@mercadopago/sdk-react";
 import { Button } from "./ui/button";
+import { useAuthStore } from "../store/useAuthStore"; // Importa el store de autenticación
 
 // Tipado de los items del carrito
 interface CartItem {
@@ -24,13 +24,16 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paymentData, setPaymentData] = useState<PaymentResponse | null>(null); // Para guardar el resultado del pago
+  const [paymentData, setPaymentData] = useState<PaymentResponse | null>(null);
+  
+  // Obtén el token del store de autenticación
+  const { token } = useAuthStore(); 
 
-  // 2. La inicialización del SDK sigue siendo la misma.
+  // La inicialización del SDK sigue siendo la misma.
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY) {
       initMercadoPago(process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY, {
-        locale: 'es-CO' // Localización para Colombia
+        locale: 'es-CO'
       });
     } else {
       console.error("MercadoPago public key is not defined");
@@ -38,8 +41,14 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
     }
   }, []);
 
-  // 3. La creación de la preferencia en el backend sigue siendo necesaria.
+  // La creación de la preferencia en el backend sigue siendo necesaria.
   const createPreference = async () => {
+    // Valida que el usuario esté autenticado antes de continuar
+    if (!token) {
+        setError("Debes iniciar sesión para continuar con el pago.");
+        return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -54,7 +63,10 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
         `${process.env.NEXT_PUBLIC_API_URL}/mercadopago/create-preference`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}` // <-- Envía el token en el encabezado
+          },
           body: JSON.stringify({ items: itemsToCreate }),
         },
       );
@@ -65,7 +77,7 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
       } else {
         throw new Error("Preference ID was not returned.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error creating preference:", err);
       setError("No se pudo iniciar el proceso de pago. Inténtalo de nuevo.");
     } finally {
@@ -73,8 +85,7 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
     }
   };
 
-  // 4. Esta es la función CLAVE para Checkout Bricks.
-  // Se ejecuta cuando el usuario hace clic en "Pagar" DENTRO del formulario de Mercado Pago.
+  // Esta es la función CLAVE para Checkout Bricks.
   const handleOnSubmit = async (formData: any) => {
     setIsLoading(true);
     try {
@@ -85,7 +96,7 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
       });
 
       const result = await response.json() as PaymentResponse;
-      setPaymentData(result); // Guarda el resultado del pago para mostrar la pantalla de estado
+      setPaymentData(result);
       
     } catch (err) {
       console.error("Error processing payment:", err);
@@ -107,13 +118,11 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
 
   return (
     <div className="w-full">
-      {/* 5. La lógica cambia: si no hay preferenceId, mostramos el botón "Proceder al Pago".
-          Si SÍ hay preferenceId, mostramos el formulario de pago (el Brick). */}
       {!preferenceId ? (
         <Button
           onClick={createPreference}
           disabled={isLoading}
-          className="w-full bg-blue-500 hover:bg-blue-600"
+          className="w-full bg-red-500 hover:bg-red-600"
         >
           {isLoading ? "Cargando..." : "Proceder al Pago"}
         </Button>
@@ -128,7 +137,6 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
               creditCard: "all",
               debitCard: "all",
               mercadoPago: "all",
-              // Para PSE, se usa `ticket` y se filtra en la configuración de la preferencia.
             },
           }}
           onSubmit={handleOnSubmit}
