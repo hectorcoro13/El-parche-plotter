@@ -6,7 +6,8 @@ import { Footer } from "../../components/footer";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useCartStore } from "../../store/useCartStore";
 import { useRouter } from "next/navigation";
-import { CheckoutForm } from "../../components/checkout-form"; 
+import { MercadoPagoButton } from "../../components/MercadoPagoButton";
+import Link from "next/link"; // Importa Link
 
 export default function CheckoutPage() {
   const { isLoggedIn, user, isAuthLoading } = useAuthStore();
@@ -54,7 +55,25 @@ export default function CheckoutPage() {
           
           {/* Columna Izquierda: Formulario de pago y datos */}
           <div className="lg:col-span-2">
-            <CheckoutForm user={user} items={items} />
+            {/* Detalles de Contacto y Envío */}
+            <div className="bg-gray-900 p-6 rounded-lg border border-red-500/20 space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2 text-red-400">1. Detalles de Contacto y Envío</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div><p className="font-bold">Nombre:</p><p>{user.name}</p></div>
+                  <div><p className="font-bold">Email:</p><p>{user.email}</p></div>
+                  <div><p className="font-bold">Dirección:</p><p>{user.address || 'No especificada'}</p></div>
+                  <div><p className="font-bold">Teléfono:</p><p>{user.phone || 'No especificado'}</p></div>
+                </div>
+                <Link href="/perfil" className="text-xs text-red-400 hover:underline mt-2 inline-block">Editar mis datos</Link>
+              </div>
+
+              {/* Botón y formulario de Mercado Pago */}
+              <div className="border-t border-gray-700 pt-6">
+                <h3 className="text-lg font-semibold mb-4 text-red-400">2. Método de Pago</h3>
+                <MercadoPagoButton items={items} />
+              </div>
+            </div>
           </div>
 
           {/* Columna Derecha: Resumen de la orden */}
