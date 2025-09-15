@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
+import { initMercadoPago, Payment, StatusScreen } from "@mercadopago/sdk-react";
 import { Button } from "./ui/button";
 import { useAuthStore } from "../store/useAuthStore";
-import { useCartStore } from "../store/useCartStore"; // Importa el store del carrito
+import { useCartStore } from "../store/useCartStore"; 
 import Swal from 'sweetalert2';
 import { useRouter } from "next/navigation";
+import { useMemo } from 'react';
 
 // Tipado de los items del carrito
 interface CartItem {
@@ -38,7 +39,7 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
         setError("Debes iniciar sesión para continuar con el pago.");
         return;
     }
-
+    
     setIsLoading(true);
     setError(null);
     try {
@@ -62,21 +63,22 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
       );
       
       const data = await response.json();
-      if (data.preferenceId) {
+      if (response.ok && data.preferenceId) {
         setPreferenceId(data.preferenceId);
       } else {
-        throw new Error("Preference ID was not returned.");
+        throw new Error(data.message || "Preference ID was not returned.");
       }
     } catch (err: any) {
       console.error("Error creating preference:", err);
-      setError("No se pudo iniciar el proceso de pago. Inténtalo de nuevo.");
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // --- LÓGICA CORREGIDA DEL FLUJO DE PAGO ---
+  // Ahora, handleOnSubmit verifica el estado del pago y si es aprobado, crea la orden.
   const handleOnSubmit = async (formData: any) => {
-    // Aquí, 'formData' NO son los datos de la tarjeta. Es el resultado del pago.
     const paymentResult = formData;
 
     if (paymentResult.status === 'approved') {
@@ -86,7 +88,7 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
           products: items.map(item => ({ id: item.id })),
         };
         
-        // Llamamos a la API de órdenes directamente
+        // Llamada directa a la ruta de órdenes, sin pasar por process-payment
         const orderResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
           method: 'POST',
           headers: { 
@@ -131,7 +133,10 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
     }
   };
 
-  // El componente Payment se encarga de renderizar el formulario.
+  const totalAmount = useMemo(() => {
+    return items.reduce((acc, item) => acc + Number(item.price) * item.quantity, 0);
+  }, [items]);
+
   return (
     <div className="w-full">
       {!preferenceId ? (
@@ -145,7 +150,7 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
       ) : (
         <Payment
           initialization={{
-            amount: items.reduce((acc, item) => acc + Number(item.price) * item.quantity, 0),
+            amount: totalAmount,
             preferenceId: preferenceId,
           }}
           customization={{
