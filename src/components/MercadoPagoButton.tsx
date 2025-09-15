@@ -76,8 +76,6 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
     }
   };
 
-  // --- LÓGICA CORREGIDA DEL FLUJO DE PAGO ---
-  // Ahora, handleOnSubmit verifica el estado del pago y si es aprobado, crea la orden.
   const handleOnSubmit = async (formData: any) => {
     const paymentResult = formData;
 
@@ -88,7 +86,6 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
           products: items.map(item => ({ id: item.id })),
         };
         
-        // Llamada directa a la ruta de órdenes, sin pasar por process-payment
         const orderResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
           method: 'POST',
           headers: { 
@@ -157,7 +154,7 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
             paymentMethods: {
               creditCard: "all",
               debitCard: "all",
-              mercadoPago: "all",
+              // La línea "mercadoPago: 'all'" ha sido eliminada para solucionar el error.
             },
             visual: {
               style: {
