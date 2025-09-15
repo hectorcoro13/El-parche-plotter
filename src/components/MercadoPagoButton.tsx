@@ -17,7 +17,6 @@ interface CartItem {
 
 export function MercadoPagoButton({ items }: { items: CartItem[] }) {
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
-  // 1. Añadimos un estado de carga para la creación de la preferencia
   const [isPreferenceLoading, setIsPreferenceLoading] = useState(true); 
   const [error, setError] = useState<string | null>(null);
 
@@ -33,10 +32,8 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
     }
   }, []);
 
-  // 2. Usamos useEffect para crear la preferencia automáticamente al cargar el componente
   useEffect(() => {
     const createPreference = async () => {
-      // Si no hay token o no hay items, no hacemos nada.
       if (!token || items.length === 0) {
         setIsPreferenceLoading(false);
         return;
@@ -78,7 +75,6 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
     };
 
     createPreference();
-  // Se ejecutará cuando el token o los items cambien.
   }, [token, items]);
 
   const handleOnSubmit = async (formData: any) => {
@@ -125,7 +121,10 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
         });
       }
     } else {
-      console.error("Pago no aprobado:", paymentResult);
+      // LOG #3: VER LA RESPUESTA COMPLETA DEL BRICK CUANDO EL PAGO ES RECHAZADO
+      console.error('--- PAGO NO APROBADO. Respuesta completa del Brick: ---');
+      console.log(JSON.stringify(paymentResult, null, 2));
+
       Swal.fire({
         title: 'Error en el Pago',
         text: 'El pago no fue aprobado. Por favor, revisa tus datos o el método de pago.',
@@ -139,7 +138,6 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
     return items.reduce((acc, item) => acc + Number(item.price) * item.quantity, 0);
   }, [items]);
 
-  // 3. El renderizado ahora maneja el estado de carga y muestra el brick directamente
   return (
     <div className="w-full">
       {isPreferenceLoading ? (
