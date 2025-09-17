@@ -79,15 +79,22 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
     createPreference();
   }, [token, items]);
 
-  const handleOnSubmit = async (formData: any) => {
-  // El ID del pago viene en formData.id
-  const paymentId = formData.id;
+  const handleOnSubmit = async (formData: any, additionalData?: any) => {
+  // El ID del pago lo extraemos de los datos que nos pasa el Brick.
+  // Puede venir en 'formData.id' o a veces como 'formData.payment_id'.
+  const paymentId = formData.id || formData.payment_id;
 
   // Log para depurar en el navegador qué estamos recibiendo del Brick
-  console.log("--- [BRICK] Datos recibidos en onSubmit:", JSON.stringify(formData, null, 2));
+  console.log("--- [BRICK] Datos recibidos en onSubmit:", JSON.stringify({ formData, additionalData }, null, 2));
 
   if (!paymentId) {
-    Swal.fire('Error', 'No se pudo obtener el ID del pago. Inténtalo de nuevo.', 'error');
+    Swal.fire({
+      title: 'Error',
+      text: 'No se pudo obtener el ID del pago. Inténtalo de nuevo.',
+      icon: 'error',
+      background: '#111827',
+      color: '#FFFFFF'
+    });
     return;
   }
   
@@ -116,7 +123,7 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
         'Authorization': `Bearer ${token}` 
       },
       body: JSON.stringify({
-        paymentId: paymentId, // <-- Ahora sí enviamos el ID correcto
+        paymentId: paymentId,
         orderData: orderData
       }),
     });
