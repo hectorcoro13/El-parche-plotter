@@ -25,6 +25,7 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
   const router = useRouter();
 
   useEffect(() => {
+    // Inicializa Mercado Pago
     if (process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY) {
       initMercadoPago(process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY, { locale: 'es-CO' });
     } else {
@@ -33,6 +34,7 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
   }, []);
 
   useEffect(() => {
+    // Crea la preferencia de pago en el backend
     const createPreference = async () => {
       if (!token || items.length === 0) {
         setIsPreferenceLoading(false);
@@ -77,57 +79,69 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
     createPreference();
   }, [token, items]);
 
-  const handleOnSubmit = async (formData: any) => {
-    const paymentResult = formData;
+  // --- FUNCIÓN onSubmit CORREGIDA Y SEGURA ---
+  // Esta función se ejecuta cuando el usuario hace clic en "Pagar" dentro del Brick.
+  const handleOnSubmit = async (formData: any, additionalData?: any) => {
+    // Extraemos el ID del pago de los datos del formulario
+    const paymentId = formData.id || formData.payment_id;
+    
+    // Mostramos un loading para que el usuario espere
+    Swal.fire({
+      title: 'Verificando tu pago...',
+      text: 'Estamos confirmando la transacción de forma segura.',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+      background: '#111827', color: '#FFFFFF'
+    });
 
-    if (paymentResult.status === 'approved') {
-      try {
-        const orderData = {
-          userId: user?.id,
-          products: items.map(item => ({ id: item.id })),
-        };
-        
-        const orderResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json', 
-            'Authorization': `Bearer ${token}` 
-          },
-          body: JSON.stringify(orderData),
-        });
+    try {
+      // Preparamos los datos necesarios para crear la orden en el backend
+      const orderData = {
+        userId: user?.id,
+        products: items.map(item => ({ id: item.id, quantity: item.quantity })),
+      };
 
-        if (!orderResponse.ok) {
-          throw new Error('El pago fue exitoso pero hubo un problema al registrar tu orden.');
-        }
+      // CAMBIO CLAVE: Llamamos al nuevo endpoint '/process-payment' en el backend.
+      // Le pasamos el paymentId que nos dio el Brick para que el backend lo verifique.
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mercadopago/process-payment`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({
+          paymentId: paymentId,
+          orderData: orderData
+        }),
+      });
 
-        await Swal.fire({
-          title: '¡Pago Exitoso!',
-          text: 'Tu compra ha sido realizada.',
-          icon: 'success',
-          timer: 3000,
-          showConfirmButton: false,
-          background: '#111827', color: '#FFFFFF'
-        });
+      const result = await response.json();
 
-        clearCart();
-        router.push('/perfil');
-      } catch (err: any) {
-        console.error("Error al crear la orden después del pago:", err);
-        Swal.fire({
-          title: 'Error en la Orden',
-          text: err.message,
-          icon: 'error',
-          background: '#111827', color: '#FFFFFF'
-        });
+      if (!response.ok) {
+        // Si el backend nos da un error, lo mostramos.
+        throw new Error(result.message || 'El pago fue rechazado por el banco o por seguridad.');
       }
-    } else {
-      // LOG #3: VER LA RESPUESTA COMPLETA DEL BRICK CUANDO EL PAGO ES RECHAZADO
-      console.error('--- PAGO NO APROBADO. Respuesta completa del Brick: ---');
-      console.log(JSON.stringify(paymentResult, null, 2));
 
+      // Si el backend confirma que todo está bien:
+      await Swal.fire({
+        title: '¡Pago Exitoso!',
+        text: 'Tu compra ha sido confirmada y tu orden está siendo procesada.',
+        icon: 'success',
+        timer: 3000,
+        showConfirmButton: false,
+        background: '#111827', color: '#FFFFFF'
+      });
+
+      clearCart();
+      router.push('/perfil'); // Redirigimos al usuario
+
+    } catch (err: any) {
+      console.error("Error en el proceso de pago:", err);
       Swal.fire({
         title: 'Error en el Pago',
-        text: 'El pago no fue aprobado. Por favor, revisa tus datos o el método de pago.',
+        text: err.message,
         icon: 'error',
         background: '#111827', color: '#FFFFFF'
       });
@@ -168,8 +182,8 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
               }
             }
           }}
-          onSubmit={handleOnSubmit}
-          onError={(error) => console.error(error)}
+          onSubmit={handleOnSubmit} // <-- Aquí se llama a nuestra función segura
+          onError={(error) => console.error("Error en el Brick:", error)}
         />
       ) : (
         <p className="text-center text-yellow-500">No se pudo inicializar el pago. Revisa tu sesión y los productos del carrito.</p>
