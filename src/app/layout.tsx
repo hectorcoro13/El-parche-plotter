@@ -19,11 +19,15 @@ const inter = Inter({
   variable: "--font-inter",
 })
 
+
 export const metadata: Metadata = {
   title: "El Parche Plotter - Arte que Define tu Espacio",
   description:
     "Retablos personalizados, stickers únicos y diseños que reflejan tu personalidad. Arte urbano de calidad premium.",
   generator: "v0.app",
+  icons: {
+    icon: '/logo.png', 
+  },
 }
 
 export default function RootLayout({

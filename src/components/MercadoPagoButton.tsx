@@ -154,6 +154,7 @@ export function MercadoPagoButton({ items }: { items: CartItem[] }) {
             paymentMethods: {
               creditCard: "all",
               debitCard: "all",
+              ticket: "all", 
             },
             visual: {
               style: {

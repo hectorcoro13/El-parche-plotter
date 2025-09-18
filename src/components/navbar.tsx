@@ -1,10 +1,12 @@
+// Reemplaza todo el contenido de tu archivo con esta versión corregida
+
 "use client"
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "./ui/button"
-import { ShoppingCart, LogOut, LayoutDashboard, Menu, X } from "lucide-react"
+import { ShoppingCart, LogOut, LayoutDashboard, Menu, X, User } from "lucide-react" // Importa el ícono de User
 import { AuthModal } from "./auth-modal" 
 import { useCartStore } from "../store/useCartStore"
 import { useUIStore } from "../store/useUIStore"
@@ -15,14 +17,10 @@ export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { isAuthModalOpen, openAuthModal, closeAuthModal } = useUIStore();
   
-  // --- CAMBIO CLAVE DE REACTIVIDAD ---
-  // 1. Nos suscribimos al array de 'items' directamente.
   const items = useCartStore(state => state.items);
-  // 2. Calculamos el contador basándonos en la longitud del array.
   const cartCount = items.length;
   
-  const { logout } = useAuthStore(); // Obtenemos la función logout de la auth store
-  const { isLoggedIn, user, isAuthLoading } = useAuthStore();
+  const { logout, isLoggedIn, user, isAuthLoading } = useAuthStore();
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
@@ -43,7 +41,7 @@ export function Navbar() {
       color: '#FFFFFF'
     }).then((result) => {
       if (result.isConfirmed) {
-        logout(); // <-- Usamos la función logout centralizada
+        logout();
         window.location.href = '/'; 
       }
     })
@@ -122,7 +120,8 @@ export function Navbar() {
             </div>
           </div>
         </div>
-
+        
+        {/* --- CORRECCIÓN EN MENÚ MÓVIL --- */}
         {isMenuOpen && (
           <div className="md:hidden bg-black/80 backdrop-blur-lg pb-4 px-2 space-y-1">
             <Link href="/" onClick={() => setIsMenuOpen(false)} className="block text-white hover:text-red-500 px-3 py-2 rounded-md">Inicio</Link>
@@ -137,10 +136,17 @@ export function Navbar() {
             <div className="border-t border-red-500/20 pt-4">
               {isLoggedIn ? (
                 <>
-                  <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="block text-white hover:text-red-500 px-3 py-2 rounded-md mb-2">Mi Perfil</Link>
-                  <Button onClick={handleLogout} variant="destructive" className="w-full bg-red-600 hover:bg-red-700">Cerrar Sesión</Button>
+                  <Link href="/perfil" onClick={() => setIsMenuOpen(false)} className="flex items-center text-white hover:text-red-500 px-3 py-2 rounded-md mb-2">
+                    <User className="w-4 h-4 mr-2" />
+                    Mi Perfil
+                  </Link>
+                  <Button onClick={handleLogout} variant="destructive" className="w-full bg-red-600 hover:bg-red-700">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Cerrar Sesión
+                  </Button>
                 </>
               ) : (
+                // El botón que se mostraba antes ya era el correcto, lo mantengo aquí para asegurar.
                 <Button variant="outline" className="w-full border-white/50 text-white hover:bg-white/10" onClick={() => { openAuthModal(); setIsMenuOpen(false); }}>
                   Iniciar Sesión / Registro
                 </Button>
